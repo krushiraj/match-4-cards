@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <meta name="theme-color" content="#000000" />
+    <!--
+      manifest.json provides metadata used when your web app is added to the
+      homescreen on Android. See https://developers.google.com/web/fundamentals/engage-and-retain/web-app-manifest/
+    -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico" />
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous"> -->
+
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <title>Match 4</title>
+    <style>
+      input[type='radio'] + label span {
+        transition: background 0.2s, transform 0.2s;
+      }
+
+      input[type='radio'] + label span:hover,
+      input[type='radio'] + label:hover span {
+        transform: scale(1.2);
+      }
+
+      input[type='radio']:checked + label span {
+        background-color: #3490dc;
+        box-shadow: 0px 0px 0px 2px white inset;
+      }
+
+      input[type='radio']:checked + label {
+        color: #3490dc;
+      }
+
+      #hand,
+      #passed {
+        width: 150px;
+        height: 225px;
+      }
+
+      #hand > li,
+      #passed > li {
+        position: absolute;
+        -moz-transition: top 0.5s ease 0.1s, left 0.5s ease 0.2s,
+          -moz-transform 0.5s ease 0.2s;
+        -o-transition: top 0.5s ease 0.1s, left 0.5s ease 0.2s,
+          -o-transform 0.5s ease 0.2s;
+        -webkit-transition: top 0.5s ease, left 0.5s ease,
+          -webkit-transform 0.5s ease;
+        -webkit-transition-delay: 0.1s, 0.2s, 0.2s;
+        transition: top 0.5s ease 0.1s, left 0.5s ease 0.2s,
+          transform 0.5s ease 0.2s;
+      }
+      #hand > li:nth-child(1) {
+        -moz-transform: rotate(-3deg);
+        -ms-transform: rotate(-3deg);
+        -webkit-transform: rotate(-3deg);
+        transform: rotate(-3deg);
+      }
+      #hand > li:nth-child(2) {
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+      }
+      #hand > li:nth-child(3) {
+        -moz-transform: rotate(3deg);
+        -ms-transform: rotate(3deg);
+        -webkit-transform: rotate(3deg);
+        transform: rotate(3deg);
+      }
+      #hand > li:nth-child(4) {
+        -moz-transform: rotate(6deg);
+        -ms-transform: rotate(6deg);
+        -webkit-transform: rotate(6deg);
+        transform: rotate(6deg);
+      }
+      #hand > li:hover,
+      #passed > li:hover {
+        cursor: pointer;
+        -moz-box-shadow: inset 0 0 80px rgba(150, 100, 50, 0.3),
+          0 0 50px rgba(255, 255, 200, 0.8);
+        -webkit-box-shadow: inset 0 0 80px rgba(150, 100, 50, 0.3),
+          0 0 50px rgba(255, 255, 200, 0.8);
+        box-shadow: inset 0 0 80px rgba(150, 100, 50, 0.3),
+          0 0 50px rgba(255, 255, 200, 0.8);
+      }
+      #hand > li:hover {
+        top: -70px;
+      }
+      #passed > li:hover {
+        top: 0;
+      }
+      #hand:hover > li:nth-child(1) {
+        -moz-transform: rotate(-10deg);
+        -ms-transform: rotate(-10deg);
+        -webkit-transform: rotate(-10deg);
+        transform: rotate(-10deg);
+        left: -50px;
+      }
+      #hand:hover > li:nth-child(2) {
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -webkit-transform: rotate(0deg);
+        transform: rotate(0deg);
+        left: 0px;
+      }
+      #hand:hover > li:nth-child(3) {
+        -moz-transform: rotate(10deg);
+        -ms-transform: rotate(10deg);
+        -webkit-transform: rotate(10deg);
+        transform: rotate(10deg);
+        left: 50px;
+      }
+      #hand:hover > li:nth-child(4) {
+        -moz-transform: rotate(20deg);
+        -ms-transform: rotate(20deg);
+        -webkit-transform: rotate(20deg);
+        transform: rotate(20deg);
+        left: 100px;
+      }
+
+      #hand,
+      #passed {
+        zoom: 1;
+      }
+      #hand:before,
+      #hand:after,
+      #passed:before,
+      #passed:after {
+        content: '';
+        display: table;
+      }
+      #hand:after {
+        clear: both;
+      }
+
+      #hand {
+        border: 5px solid #030;
+        -moz-border-radius: 20px;
+        -webkit-border-radius: 20px;
+        border-radius: 20px;
+      }
+
+      #hand,
+      #passed {
+        position: relative;
+        margin: 3% auto;
+      }
+      #hand > li,
+      #passed > li {
+        top: 0px;
+        left: -20px;
+        list-style: none;
+        width: 11rem;
+        height: 15.4rem;
+        background-color: #fff;
+        -moz-border-radius: 15px;
+        -webkit-border-radius: 15px;
+        border-radius: 15px;
+        -moz-box-shadow: inset 0 0 80px rgba(150, 100, 50, 0.5), 0 0 3px #966432;
+        -webkit-box-shadow: inset 0 0 80px rgba(150, 100, 50, 0.5),
+          0 0 3px #966432;
+        box-shadow: inset 0 0 80px rgba(150, 100, 50, 0.5), 0 0 3px #966432;
+        -moz-transform-style: preserve-3d;
+        -webkit-transform-style: preserve-3d;
+        transform-style: preserve-3d;
+        -moz-backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        -moz-perspective: 1000;
+        -webkit-perspective: 1000;
+        perspective: 1000;
+        -moz-transform: translateZ(0deg);
+        -webkit-transform: translateZ(0deg);
+        transform: translateZ(0deg);
+      }
+
+      #hand > li:after {
+        right: 0;
+        bottom: 4%;
+        -moz-transform: rotate(180deg);
+        -ms-transform: rotate(180deg);
+        -webkit-transform: rotate(180deg);
+        transform: rotate(180deg);
+      }
+      #hand > li > P,
+      #passed > li > P {
+        display: flex;
+        flex-direction: column;
+        margin: auto;
+        width: 100%;
+        height: 100%;
+      }
+
+      .top .bottom .mid {
+        margin: auto;
+      }
+
+      .bottom,
+      .top {
+        position: absolute;
+        margin: 5px 10px;
+        font-size: 1rem;
+        padding: 5px;
+        border-radius: 5px;
+      }
+
+      .bottom {
+        bottom: 0;
+        right: 0;
+        -moz-transform: rotate(180deg);
+        -ms-transform: rotate(180deg);
+        -webkit-transform: rotate(180deg);
+        transform: rotate(180deg);
+      }
+
+      .top {
+        top: 0;
+        left: 0;
+      }
+
+      .mid {
+        margin: auto;
+        font-size: 3rem;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+      -->
+  </body>
+</html>

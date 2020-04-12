@@ -1,3 +1,5 @@
-# Chat App Tutorial Using React.js Socket.io and Node.js
+# Match-4 cards using React and Firebase
+
 ---
-This is a repository for my Medium.com tutorial.
+
+TODO add more info here.

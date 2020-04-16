@@ -5,6 +5,7 @@ import {
   createRoom,
   joinRoom,
   createCard,
+  leaveRoom,
 } from './utils/firebase';
 import Cookie from './utils/cookies';
 import Game from './Game';
@@ -41,18 +42,25 @@ class Main extends React.Component {
   async signOut() {
     await this.props.signOut();
     this.cookie.reset();
+    this.setState({ ...this.cookie.getAll() });
   }
 
   async joinOrCreateRoom() {
-    const roomId = this.state.joinRoom
-      ? this.state.roomId
-      : Math.floor(100000 + Math.random() * 900000);
+    let roomId = this.state.roomId;
     if (this.state.joinRoom) {
       joinRoom({ roomId });
     } else {
-      createRoom({ roomId });
+      roomId = (await createRoom()).data;
     }
     this.updateState({ roomId, joined: true, isAdmin: !this.state.joinRoom });
+  }
+
+  async leaveRoom() {
+    const { roomId } = this.state;
+    const { uid } = this.props.user;
+    leaveRoom({ roomId, uid }).then(() =>
+      this.updateState({ roomId: null, cardName: null, card: null })
+    );
   }
 
   async createCard() {
@@ -123,6 +131,7 @@ class Main extends React.Component {
             ...this.props,
             ...this.state,
             signOut: this.signOut.bind(this),
+            leaveRoom: this.leaveRoom.bind(this),
           }}
         />
         <div className="mx-auto my-auto w-full">{this.renderAppByState()}</div>

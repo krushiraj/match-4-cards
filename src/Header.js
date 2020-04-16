@@ -21,6 +21,7 @@ export default class Header extends React.Component {
                 {this.safeBool(this.props.isAdmin) ? ' - Admin' : ''})
               </span>
             </h2>
+            <button onClick={() => this.props.leaveRoom()}>Leave</button>
             <button
               className="right-0 align-middle text-right bg-white-800 hover:bg-white-700 text-black font-bold border-2 py-2 px-4 ml-auto rounded"
               onClick={() => this.props.signOut()}

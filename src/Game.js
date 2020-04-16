@@ -1,7 +1,13 @@
 import React from 'react';
 
 import Cookie from './utils/cookies';
-import { firebaseApp, passCard, checkShow, startGame } from './utils/firebase';
+import {
+  firebaseApp,
+  passCard,
+  checkShow,
+  startGame,
+  createCard,
+} from './utils/firebase';
 
 export default class Game extends React.Component {
   constructor(props) {
@@ -14,6 +20,13 @@ export default class Game extends React.Component {
   safeBool(val) {
     if (val === true || val === 'true') return true;
     return false;
+  }
+
+  updateState(updates) {
+    for (const key of Object.keys(updates)) {
+      this.cookie.set(key, updates[key]);
+    }
+    this.setState(updates);
   }
 
   componentDidMount() {
@@ -54,35 +67,48 @@ export default class Game extends React.Component {
       this.db.ref(`rooms/${roomId}/cards`).on('value', (snap) => {
         if (snap.exists()) this.setState({ cards: snap.val() });
       });
+      this.cookie.extendExpiryForAll();
     }
   }
 
   async startGame() {
-    const res = await startGame({ roomId: this.state.roomId });
-    if (typeof res.data === 'string') {
-      this.setState({
-        err: 'Not everyone has chosen card names',
-      });
-    }
+    startGame({ roomId: this.props.roomId }).then(({ data }) => {
+      if (typeof data === 'string') {
+        this.setState({
+          err: data,
+        });
+      }
+    });
   }
 
   async passCard() {
-    const passedIndex = this.state.passedIndex;
-    passCard({
-      roomId: this.props.roomId,
-      cards: [...this.state.gameData.cards, this.state.passedCard].filter(
-        Boolean
-      ),
-      passedIndex,
-    });
+    if (!this.state.passClicked) {
+      await this.setState({ passClicked: true });
+      const passedIndex = this.state.passedIndex;
+      passCard({
+        roomId: this.props.roomId,
+        cards: [...this.state.gameData.cards, this.state.passedCard].filter(
+          Boolean
+        ),
+        passedIndex,
+      }).then(() => this.setState({ passClicked: false }));
+    }
   }
 
   async show() {
-    const cards = this.state.gameData.cards;
-    checkShow({
-      roomId: this.props.roomId,
-      cards: cards.length === 3 ? [...cards, this.state.passedCard] : cards,
-    });
+    if (!this.state.showClicked) {
+      await this.setState({ showClicked: true });
+      const cards = this.state.gameData.cards;
+      checkShow({
+        roomId: this.props.roomId,
+        cards: cards.length === 3 ? [...cards, this.state.passedCard] : cards,
+      }).then(({ data }) => this.setState({ showClicked: false, msg: data }));
+    }
+  }
+
+  async updateCard() {
+    createCard({ cardName: this.state.card, roomId: this.props.roomId });
+    this.updateState({ cardName: this.state.card });
   }
 
   render() {
@@ -100,19 +126,63 @@ export default class Game extends React.Component {
                 Object.keys(this.state.players).map((uid, index) => (
                   <li key={index} className="my-3 top-0 left-0 relative">
                     <b>{this.state.players[uid].name}: </b>
-                    <span
-                      className="px-2 py-1 border-4 border-solid rounded-md"
-                      style={{
-                        borderColor:
-                          this.state.cards[this.state.players[uid].card] ||
-                          '#555',
-                      }}
-                    >
-                      {this.state.players[uid].card}
-                    </span>
+                    {this.state.cardEditing && this.props.uid === uid ? (
+                      <input
+                        className="px-2 py-1 border-4 border-solid rounded-md"
+                        style={{
+                          borderColor:
+                            this.state.cards[this.state.players[uid].card] ||
+                            '#555',
+                        }}
+                        value={this.state.card}
+                        onChange={(e) =>
+                          this.setState({
+                            card: e.target.value,
+                          })
+                        }
+                      />
+                    ) : (
+                      <span
+                        className="px-2 py-1 border-4 border-solid rounded-md"
+                        style={{
+                          borderColor:
+                            this.state.cards[this.state.players[uid].card] ||
+                            '#555',
+                        }}
+                      >
+                        {this.state.players[uid].card}
+                      </span>
+                    )}
                     <span className="mx-2 p-1 border-solid border-4 border-blue-300 rounded-md">
                       {this.state.scores[uid]} pts
                     </span>
+                    {this.props.uid === uid ? (
+                      this.state.cardEditing ? (
+                        <button
+                          onClick={() => {
+                            this.updateCard();
+                            this.setState({
+                              cardEditing: false,
+                            });
+                          }}
+                        >
+                          Save
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            this.setState({
+                              cardEditing: true,
+                              card: this.state.players[uid].card,
+                            })
+                          }
+                        >
+                          Edit
+                        </button>
+                      )
+                    ) : (
+                      <span></span>
+                    )}
                   </li>
                 ))}
             </ul>
@@ -148,6 +218,28 @@ export default class Game extends React.Component {
                 </span>
                 <span class="font-semibold mr-2 text-left flex-auto">
                   {this.state.err}
+                </span>
+                <svg
+                  class="fill-current opacity-75 h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M12.95 10.707l.707-.707L8 4.343 6.586 5.757 10.828 10l-4.242 4.243L8 15.657l4.95-4.95z" />
+                </svg>
+              </div>
+            </div>
+          )}
+          {this.state.msg && (
+            <div class="text-center py-4 lg:px-4 my-2">
+              <div
+                class="p-2 bg-yellow-800 items-center text-yellow-100 leading-none lg:rounded-full flex lg:inline-flex"
+                role="alert"
+              >
+                <span class="flex rounded-full bg-yellow-500 uppercase px-2 py-1 text-xs font-bold mr-3">
+                  Error
+                </span>
+                <span class="font-semibold mr-2 text-left flex-auto">
+                  {this.state.msg}
                 </span>
                 <svg
                   class="fill-current opacity-75 h-4 w-4"
@@ -287,6 +379,7 @@ export default class Game extends React.Component {
                 <button
                   className="align-middle bg-white-500 hover:bg-white-700 text-black font-bold border-2 border-green-400 py-1 px-4 mx-4 rounded"
                   onClick={() => this.show()}
+                  disabled={this.state.showClicked || false}
                 >
                   Show
                 </button>

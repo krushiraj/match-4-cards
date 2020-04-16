@@ -19,25 +19,33 @@ class Cookie {
   }
 
   getAll() {
+    this.updateCookies();
     return this.cookies;
   }
 
   set(name, value) {
     console.log('SET COOKIE', { name, value });
-    const now = new Date();
-    now.setTime(now.getTime() + 30 * 60 * 1000);
-    document.cookie = `${name}=${value};expirese=${now.toUTCString()};path=/`;
+    document.cookie = `${name}=${value};max-age=${30 * 60};path=/`;
     this.updateCookies();
     return !!this.cookies[name];
   }
 
   reset() {
     console.log('RESET ALL COOKIES');
-    const now = new Date();
-    now.setTime(now.getTime() - 60 * 1000);
     for (const name in this.cookies) {
-      document.cookie = `${name}=;expires=${now.toUTCString()};path=/`;
+      document.cookie = `${name}=;max-age=-1;path=/`;
+      this.cookies[name] = null;
     }
+    console.log(this.cookies);
+  }
+
+  extendExpiryForAll() {
+    console.log('EXTEND EXPIRY FOR ALL COOKIES');
+    for (const name in this.cookies) {
+      document.cookie = `${name}=;max-age=${30 * 60};path=/`;
+      this.cookies[name] = null;
+    }
+    console.log(this.cookies);
   }
 }
 

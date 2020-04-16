@@ -13,6 +13,7 @@ export const config = {
 export const firebaseApp = firebase.initializeApp(config);
 export const createRoom = firebase.functions().httpsCallable('createRoom');
 export const joinRoom = firebase.functions().httpsCallable('joinRoom');
+export const leaveRoom = firebase.functions().httpsCallable('leaveRoom');
 export const createCard = firebase.functions().httpsCallable('createCard');
 export const startGame = firebase.functions().httpsCallable('startGame');
 export const passCard = firebase.functions().httpsCallable('passCard');

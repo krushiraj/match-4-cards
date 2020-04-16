@@ -19,8 +19,13 @@ const shuffleArray = (array) => {
   console.log('Shuffled array:', array);
 };
 
+const safeBool = (val) => {
+  if (val === true || val === 'true') return true;
+  return false;
+};
+
 const getRandomColor = () => {
-  var letters = '0123456789';
+  var letters = 'FEDCBA98';
   var color = '#';
   for (var i = 0; i < 6; i++) {
     color += letters[Math.floor(Math.random() * letters.length)];
@@ -30,7 +35,7 @@ const getRandomColor = () => {
 
 exports.createRoom = functions.https.onCall(
   async (
-    { roomId },
+    data,
     {
       auth: {
         uid,
@@ -38,13 +43,24 @@ exports.createRoom = functions.https.onCall(
       },
     }
   ) => {
+    const getRoom = async (roomId) =>
+      (await rooms.child(roomId).once('value')).val();
     try {
+      let roomId;
+      let exists = true;
+      do {
+        roomId = Math.floor(100000 + Math.random() * 900000);
+        // eslint-disable-next-line no-await-in-loop
+        exists = await getRoom(roomId);
+        console.log({ roomId, exists });
+      } while (exists);
       console.log({
         roomId,
         uid,
         name,
       });
       await rooms.child(roomId).set({
+        timestamp: Date.now(),
         gameStarted: false,
         players: {
           [uid]: {
@@ -56,10 +72,11 @@ exports.createRoom = functions.https.onCall(
           [uid]: 0,
         },
       });
+      return roomId;
     } catch (err) {
+      console.log(err);
       return err;
     }
-    return true;
   }
 );
 
@@ -93,17 +110,55 @@ exports.joinRoom = functions.https.onCall(
         .update({
           [uid]: 0,
         });
+      await rooms.child(roomId).child('timestamp').set(Date.now());
     } catch (err) {
+      console.log(err);
       return err;
     }
     return true;
   }
 );
 
+exports.leaveRoom = functions.https.onCall(async ({ roomId, uid }) => {
+  try {
+    console.log({
+      roomId,
+      uid,
+    });
+    const playerData = (
+      await rooms.child(roomId).child('players').once('value')
+    ).val();
+    console.log(playerData);
+    const count = Object.keys(playerData);
+    if (safeBool(playerData[uid].isAdmin) === true && count > 1) {
+      const adminId = Object.keys(playerData).filter((id) => id !== uid)[0];
+      await rooms
+        .child(roomId)
+        .child('players')
+        .child(playerData[admin])
+        .update({
+          isAdmin: true,
+        });
+      console.log({ adminId });
+    }
+    console.log('Deleting all data');
+    await rooms.child(roomId).child('gameStarted').set(false);
+    await rooms.child(roomId).child('players').child(uid).remove();
+    await rooms.child(roomId).child('gameData').child(uid).remove();
+    await rooms.child(roomId).child('scores').child(uid).remove();
+    await rooms.child(roomId).child('timestamp').set(Date.now());
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
+  return true;
+});
+
 exports.countPlayerChange = functions.database
   .ref('rooms/{roomId}/players/{playerId}')
   .onWrite(async (change) => {
     const playersRef = change.after.ref.parent;
+    const roomRef = playersRef.parent.parent;
     const countRef = playersRef.parent.child('playerCount');
 
     let increment;
@@ -136,9 +191,9 @@ exports.recountPlayers = functions.database
 
     // Return the promise from counterRef.set() so our function
     // waits for this async event to complete before it exits.
-    const messagesData = await playersRef.once('value');
-    return messagesData.val()
-      ? await counterRef.set(messagesData.numChildren())
+    const playersData = await playersRef.once('value');
+    return playersData.val()
+      ? await counterRef.set(playersData.numChildren())
       : null;
   });
 
@@ -204,6 +259,8 @@ exports.createCard = functions.https.onCall(
         .child(uid)
         .child('card')
         .set(cardName);
+      console.log({ roomId, cardName });
+      rooms.child(roomId).child('timestamp').set(Date.now());
     } catch (err) {
       return err;
     }
@@ -250,7 +307,7 @@ exports.startGame = functions.https.onCall(async ({ roomId }, context) => {
       console.log({ cards, turns });
 
       for (const turnIndex in turns) {
-        gameData[turns[turnIndex]].cards = cards.splice(0, 4);
+        gameData[turns[turnIndex]].cards = cards.splice(0, 4).sort();
       }
       gameData.previousTurn = false;
       gameData.currentTurn = turns[0];
@@ -264,12 +321,15 @@ exports.startGame = functions.https.onCall(async ({ roomId }, context) => {
       await rooms.child(roomId).child('turns').set(turns);
       await rooms.child(roomId).child('gameData').set(gameData);
       await rooms.child(roomId).child('gameStarted').set(true);
+      rooms.child(roomId).child('timestamp').set(Date.now());
+
       return true;
     }
 
     console.log('All players didnot create cards yet');
     return 'All players have not created a card yet.';
   } catch (err) {
+    console.log(err);
     return err;
   }
 });
@@ -323,7 +383,9 @@ exports.passCard = functions.https.onCall(
           currentTurn: turns[turnCount % playerCount],
           nextTurn: turns[(turnCount + 1) % playerCount],
         });
+      rooms.child(roomId).child('timestamp').set(Date.now());
     } catch (err) {
+      console.log(err);
       return err;
     }
     return null;
@@ -343,12 +405,13 @@ exports.checkShow = functions.https.onCall(
 
       console.log({ winner });
 
+      let msg;
       if (!winner) {
         console.log({ cards });
 
         let i;
-        for (i = 0; i < cards.length && cards[i] === cards[0]; i += 1);
-        if (cards.length === i) {
+        for (i = 0; i < 4 && cards[i] === cards[0]; i += 1);
+        if (i === 4) {
           console.log('Setting winner:', uid);
           const isSameCard =
             (
@@ -366,17 +429,21 @@ exports.checkShow = functions.https.onCall(
             .child(uid)
             .transaction((score) => score + (isSameCard ? 200 : 100));
           await rooms.child(roomId).child('gameStarted').set(false);
+          msg = 'You won!';
         } else {
           await rooms
             .child(roomId)
             .child('scores')
             .child(uid)
             .transaction((score) => score - 50);
+          msg = `You have [${cards}]. Please check again before hitting show.`;
         }
       }
+      rooms.child(roomId).child('timestamp').set(Date.now());
+      return msg;
     } catch (err) {
+      console.log(err);
       return err;
     }
-    return null;
   }
 );

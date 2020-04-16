@@ -222,7 +222,11 @@ exports.startGame = functions.https.onCall(async ({ roomId }, context) => {
 
     console.log({ playerCount, cardCount, check: playerCount === cardCount });
 
-    if (playerCount === cardCount && playerCount > 1) {
+    if (playerCount < 3) {
+      console.log('Returning as there are less than 3 players');
+      return 'Minimum of 3 players required';
+    }
+    if (playerCount === cardCount) {
       console.log('Fetching players data');
       const playersData = (
         await rooms.child(roomId).child('players').once('value')
@@ -262,7 +266,9 @@ exports.startGame = functions.https.onCall(async ({ roomId }, context) => {
       await rooms.child(roomId).child('gameStarted').set(true);
       return true;
     }
-    return false;
+
+    console.log('All players didnot create cards yet');
+    return 'All players have not created a card yet.';
   } catch (err) {
     return err;
   }

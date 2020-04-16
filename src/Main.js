@@ -5,7 +5,6 @@ import {
   createRoom,
   joinRoom,
   createCard,
-  startGame,
 } from './utils/firebase';
 import Cookie from './utils/cookies';
 import Game from './Game';
@@ -27,17 +26,6 @@ class Main extends React.Component {
       ...cookieData,
     };
   }
-
-  // componentDidMount() {
-  //   this.db
-  //     .ref('rooms')
-  //     .child(this.state.roomId)
-  //     .child('player')
-  //     .on('value', (snap) => {
-  //       console.log(snap);
-  //       this.setState({ players: snap });
-  //     });
-  // }
 
   updateState(updates) {
     for (const key of Object.keys(updates)) {
@@ -73,15 +61,57 @@ class Main extends React.Component {
     this.updateState({ cardName: card });
   }
 
-  async startGame() {
-    const res = await startGame({ roomId: this.state.roomId });
-    if (res.data) {
-      this.setState({ started: true });
+  isUserLoggedIn() {
+    return this.props.user;
+  }
+
+  didUserJoinRoom() {
+    return this.state.joined;
+  }
+
+  userCreatedCard() {
+    return this.state.cardName;
+  }
+
+  renderAppByState() {
+    if (this.isUserLoggedIn()) {
+      if (this.didUserJoinRoom()) {
+        if (this.userCreatedCard()) {
+          return (
+            <Game
+              {...{
+                ...this.props,
+                ...this.state,
+              }}
+            />
+          );
+        } else {
+          return (
+            <CreateCard
+              {...{
+                ...this.props,
+                ...this.state,
+                setCardName: (val) => this.setState({ card: val }),
+                createCard: this.createCard.bind(this),
+              }}
+            />
+          );
+        }
+      } else {
+        return (
+          <Lobby
+            {...{
+              ...this.props,
+              ...this.state,
+              setJoinRoom: (val) => this.setState({ joinRoom: val }),
+              setRoomId: (val) => this.updateState({ roomId: val }),
+              joinOrCreateRoom: this.joinOrCreateRoom.bind(this),
+            }}
+          />
+        );
+      }
     } else {
-      this.setState({
-        started: false,
-        msg: 'Not everyone has chosen card names',
-      });
+      return <SignIn signIn={this.signIn.bind(this)} />;
     }
   }
 
@@ -95,45 +125,7 @@ class Main extends React.Component {
             signOut: this.signOut.bind(this),
           }}
         />
-        <div className="mx-auto my-auto w-full">
-          {!this.props.user && <SignIn signIn={this.signIn.bind(this)} />}
-          {this.props.user && !this.state.joined && (
-            <Lobby
-              {...{
-                ...this.props,
-                ...this.state,
-                setJoinRoom: (val) => this.setState({ joinRoom: val }),
-                setRoomId: (val) => this.updateState({ roomId: val }),
-                joinOrCreateRoom: this.joinOrCreateRoom.bind(this),
-              }}
-            />
-          )}
-          {this.state.joined &&
-            this.state.roomId &&
-            this.props.user &&
-            !this.state.cardName && (
-              <CreateCard
-                {...{
-                  ...this.props,
-                  ...this.state,
-                  setCardName: (val) => this.setState({ card: val }),
-                  createCard: this.createCard.bind(this),
-                }}
-              />
-            )}
-          {this.state.joined &&
-            this.state.roomId &&
-            this.props.user &&
-            this.state.cardName && (
-              <Game
-                {...{
-                  ...this.props,
-                  ...this.state,
-                  startGame: this.startGame.bind(this),
-                }}
-              />
-            )}
-        </div>
+        <div className="mx-auto my-auto w-full">{this.renderAppByState()}</div>
       </div>
     );
   }

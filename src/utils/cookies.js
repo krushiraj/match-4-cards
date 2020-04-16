@@ -24,17 +24,19 @@ class Cookie {
 
   set(name, value) {
     console.log('SET COOKIE', { name, value });
-    document.cookie = `${name}=${value};max-age=${
-      Date.now() + 86400000
-    };path=/`;
+    const now = new Date();
+    now.setTime(now.getTime() + 30 * 60 * 1000);
+    document.cookie = `${name}=${value};expirese=${now.toUTCString()};path=/`;
     this.updateCookies();
     return !!this.cookies[name];
   }
 
   reset() {
     console.log('RESET ALL COOKIES');
+    const now = new Date();
+    now.setTime(now.getTime() - 60 * 1000);
     for (const name in this.cookies) {
-      document.cookie = `${name}=;max-age=${Date.now() - 100};path=/`;
+      document.cookie = `${name}=;expires=${now.toUTCString()};path=/`;
     }
   }
 }

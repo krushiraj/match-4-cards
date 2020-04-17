@@ -7,6 +7,7 @@ import {
   checkShow,
   startGame,
   createCard,
+  leaveRoom,
 } from './utils/firebase';
 
 export default class Game extends React.Component {
@@ -30,14 +31,38 @@ export default class Game extends React.Component {
   }
 
   componentDidMount() {
-    const roomId = this.cookie.get('roomId', null);
-    const uid = this.cookie.get('uid', null);
+    const roomId = this.cookie.get('roomId', '');
+    const uid = this.cookie.get('uid', '');
     if (roomId) {
       this.db.ref(`rooms/${roomId}/gameStarted`).on('value', (snap) => {
         if (snap.exists()) this.setState({ gameStarted: snap.val() });
       });
+      this.db
+        .ref(`rooms/${roomId}/players/${uid}/isAdmin`)
+        .on('value', (snap) => {
+          if (snap.exists()) {
+            const isAdmin = snap.val();
+            this.cookie.set('isAdmin', isAdmin);
+            this.props.setIsAdmin(isAdmin);
+          }
+        });
       this.db.ref(`rooms/${roomId}/players`).on('value', (snap) => {
-        if (snap.exists()) this.setState({ players: snap.val() });
+        if (snap.exists()) {
+          const players = snap.val();
+
+          this.setState(
+            {
+              players,
+            },
+            () => {
+              if (!players[uid]) {
+                this.cookie.reset();
+                this.cookie.set('uid', this.props.uid);
+                this.props.leaveRoomClient();
+              }
+            }
+          );
+        }
       });
       this.db.ref(`rooms/${roomId}/gameData/${uid}`).on('value', (snap) => {
         if (snap.exists()) this.setState({ gameData: snap.val() });
@@ -75,7 +100,7 @@ export default class Game extends React.Component {
     startGame({ roomId: this.props.roomId }).then(({ data }) => {
       if (typeof data === 'string') {
         this.setState({
-          err: data,
+          msg: data,
         });
       }
     });
@@ -101,9 +126,28 @@ export default class Game extends React.Component {
       const cards = this.state.gameData.cards;
       checkShow({
         roomId: this.props.roomId,
-        cards: cards.length === 3 ? [...cards, this.state.passedCard] : cards,
-      }).then(({ data }) => this.setState({ showClicked: false, msg: data }));
+        cards:
+          this.state.currentTurn === this.props.uid
+            ? [...cards, this.state.passedCard]
+            : cards,
+      }).then(({ data }) => {
+        if (typeof data === 'string') {
+          this.setState({ showClicked: false, msg: data }, () =>
+            setTimeout(() => this.setState({ msg: '' }), 10000)
+          );
+        } else {
+          if (this.props.uid === data.uid) {
+            this.setState({ showClicked: false, privMsg: data.msg }, () =>
+              setTimeout(() => this.setState({ privMsg: '' }), 10000)
+            );
+          }
+        }
+      });
     }
+  }
+
+  async kickUser(uid) {
+    leaveRoom({ roomId: this.props.roomId, uid });
   }
 
   async updateCard() {
@@ -124,7 +168,10 @@ export default class Game extends React.Component {
                 this.state.cards &&
                 this.state.scores &&
                 Object.keys(this.state.players).map((uid, index) => (
-                  <li key={index} className="my-3 top-0 left-0 relative">
+                  <li
+                    key={index}
+                    className="my-3 top-0 left-0 relative flex items-center"
+                  >
                     <b>{this.state.players[uid].name}: </b>
                     {this.state.cardEditing && this.props.uid === uid ? (
                       <input
@@ -166,10 +213,25 @@ export default class Game extends React.Component {
                             });
                           }}
                         >
-                          Save
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                          </svg>
                         </button>
                       ) : (
                         <button
+                          className="baseline"
                           onClick={() =>
                             this.setState({
                               cardEditing: true,
@@ -177,11 +239,48 @@ export default class Game extends React.Component {
                             })
                           }
                         >
-                          Edit
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
                         </button>
                       )
                     ) : (
                       <span></span>
+                    )}
+                    {this.safeBool(this.props.isAdmin) && (
+                      <button
+                        uid={uid}
+                        onClick={(e) =>
+                          this.kickUser(e.currentTarget.getAttribute('uid'))
+                        }
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="15" y1="9" x2="9" y2="15"></line>
+                          <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                      </button>
                     )}
                   </li>
                 ))}
@@ -207,51 +306,34 @@ export default class Game extends React.Component {
           </div>
         </div>
         <div className="my-auto flex flex-col ">
-          {this.state.err && (
-            <div class="text-center py-4 lg:px-4 my-2">
-              <div
-                class="p-2 bg-red-800 items-center text-red-100 leading-none lg:rounded-full flex lg:inline-flex"
-                role="alert"
-              >
-                <span class="flex rounded-full bg-red-500 uppercase px-2 py-1 text-xs font-bold mr-3">
-                  Error
-                </span>
-                <span class="font-semibold mr-2 text-left flex-auto">
-                  {this.state.err}
-                </span>
-                <svg
-                  class="fill-current opacity-75 h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M12.95 10.707l.707-.707L8 4.343 6.586 5.757 10.828 10l-4.242 4.243L8 15.657l4.95-4.95z" />
-                </svg>
-              </div>
-            </div>
+          {[this.state.msg, this.state.privMsg].map(
+            (msg) =>
+              msg && (
+                <div className="text-center py-4 lg:px-4 my-2">
+                  <div
+                    className="p-2 bg-blue-800 items-center text-blue-100 leading-none lg:rounded-full flex lg:inline-flex"
+                    role="alert"
+                  >
+                    <span className="flex rounded-full bg-blue-500 uppercase px-2 py-1 text-xs font-bold mr-3">
+                      INFO
+                    </span>
+                    <span className="font-semibold mr-2 text-left flex-auto">
+                      {msg}
+                    </span>
+                    <svg
+                      className="fill-current opacity-75 h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M12.95 10.707l.707-.707L8 4.343 6.586 5.757 10.828 10l-4.242 4.243L8 15.657l4.95-4.95z" />
+                    </svg>
+                  </div>
+                </div>
+              )
           )}
-          {this.state.msg && (
-            <div class="text-center py-4 lg:px-4 my-2">
-              <div
-                class="p-2 bg-yellow-800 items-center text-yellow-100 leading-none lg:rounded-full flex lg:inline-flex"
-                role="alert"
-              >
-                <span class="flex rounded-full bg-yellow-500 uppercase px-2 py-1 text-xs font-bold mr-3">
-                  Error
-                </span>
-                <span class="font-semibold mr-2 text-left flex-auto">
-                  {this.state.msg}
-                </span>
-                <svg
-                  class="fill-current opacity-75 h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M12.95 10.707l.707-.707L8 4.343 6.586 5.757 10.828 10l-4.242 4.243L8 15.657l4.95-4.95z" />
-                </svg>
-              </div>
-            </div>
-          )}
-          {this.state.winner && this.state.players ? (
+          {this.state.winner &&
+          this.state.players &&
+          this.state.players[this.state.winner] ? (
             <h1 className="mx-auto font-bold text-xl">
               {this.state.players[this.state.winner].name} has won the game
             </h1>
@@ -272,6 +354,28 @@ export default class Game extends React.Component {
                       } to pass
                   a card`}
                 </b>
+                {this.safeBool(this.state.gameStarted) && !this.state.winner && (
+                  <button
+                    className="h-20 w-20 flex flex-col items-center justify-center bg-white-500 hover:bg-green-100 text-black font-bold border-4 border-green-400 mt-4 mx-auto rounded-full"
+                    onClick={() => this.show()}
+                    disabled={this.state.showClicked || false}
+                  >
+                    <span>Show</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                  </button>
+                )}
                 <ul id="passed">
                   {this.state.currentTurn === this.props.uid &&
                     this.state.cards &&
@@ -357,7 +461,7 @@ export default class Game extends React.Component {
           <React.Fragment>
             {this.safeBool(this.state.gameStarted) ? (
               this.state.currentTurn === this.props.uid && (
-                <p className="mx-auto mt-4">
+                <p className="mx-auto mt-8">
                   {this.state.passedIndex
                     ? `You have selected `
                     : 'Select a card to pass on to next player!'}
@@ -375,20 +479,24 @@ export default class Game extends React.Component {
             )}
 
             {this.safeBool(this.state.gameStarted) && !this.state.winner && (
-              <span className="flex flex-row items-center content-around mt-8 mx-auto">
-                <button
-                  className="align-middle bg-white-500 hover:bg-white-700 text-black font-bold border-2 border-green-400 py-1 px-4 mx-4 rounded"
-                  onClick={() => this.show()}
-                  disabled={this.state.showClicked || false}
-                >
-                  Show
-                </button>
+              <span className="flex flex-row items-center content-around my-8 mx-auto">
                 {this.state.currentTurn === this.props.uid && (
                   <button
-                    className="align-middle bg-white-500 hover:bg-white-700 text-black font-bold border-2 border-green-400 py-1 px-4 mx-4 rounded"
+                    className="inline-flex bg-white-500 hover:bg-blue-100 text-black font-bold border-2 border-blue-400 py-2 px-6 rounded-full"
                     onClick={() => this.passCard()}
                   >
-                    Pass
+                    <span className="mr-2">Pass</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        fill="currentcolor"
+                        d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
+                      ></path>
+                    </svg>
                   </button>
                 )}
               </span>

@@ -13,7 +13,7 @@ class Cookie {
     }
   }
 
-  get(name, fallback = null) {
+  get(name, fallback = '') {
     console.log('GET COOKIE', { name, value: this.cookies[name] || fallback });
     return this.cookies[name] || fallback;
   }
@@ -25,7 +25,7 @@ class Cookie {
 
   set(name, value) {
     console.log('SET COOKIE', { name, value });
-    document.cookie = `${name}=${value};max-age=${30 * 60};path=/`;
+    document.cookie = `${name}=${value};max-age=3600;path=/`;
     this.updateCookies();
     return !!this.cookies[name];
   }
@@ -34,7 +34,7 @@ class Cookie {
     console.log('RESET ALL COOKIES');
     for (const name in this.cookies) {
       document.cookie = `${name}=;max-age=-1;path=/`;
-      this.cookies[name] = null;
+      this.cookies[name] = '';
     }
     console.log(this.cookies);
   }
@@ -42,10 +42,8 @@ class Cookie {
   extendExpiryForAll() {
     console.log('EXTEND EXPIRY FOR ALL COOKIES');
     for (const name in this.cookies) {
-      document.cookie = `${name}=;max-age=${30 * 60};path=/`;
-      this.cookies[name] = null;
+      document.cookie = `${name}=${this.cookies[name]};max-age=3600;path=/`;
     }
-    console.log(this.cookies);
   }
 }
 

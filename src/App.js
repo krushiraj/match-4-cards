@@ -27,7 +27,7 @@ class App extends Component {
   render() {
     return (
       <div>
-        <Main {...this.props} />
+        <Main {...{ ...this.props, uid: this.cookie.get('uid') }} />
       </div>
     );
   }

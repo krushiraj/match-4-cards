@@ -18,6 +18,7 @@ class Main extends React.Component {
   constructor(props) {
     super(props);
 
+    console.log(props);
     this.cookie = new Cookie();
     this.db = firebaseApp.database();
 
@@ -28,11 +29,16 @@ class Main extends React.Component {
     };
   }
 
-  updateState(updates) {
-    for (const key of Object.keys(updates)) {
-      this.cookie.set(key, updates[key]);
+  safeBool(val) {
+    if (val === true || val === 'true') return true;
+    return false;
+  }
+
+  updateState(cookieUpdates, stateUpdates) {
+    for (const key of Object.keys(cookieUpdates)) {
+      this.cookie.set(key, cookieUpdates[key]);
     }
-    this.setState(updates);
+    this.setState({ ...cookieUpdates, ...stateUpdates });
   }
 
   async signIn() {
@@ -42,6 +48,7 @@ class Main extends React.Component {
   async signOut() {
     await this.props.signOut();
     this.cookie.reset();
+    this.cookie.set('uid', this.props.uid);
     this.setState({ ...this.cookie.getAll() });
   }
 
@@ -57,10 +64,14 @@ class Main extends React.Component {
 
   async leaveRoom() {
     const { roomId } = this.state;
-    const { uid } = this.props.user;
+    const { uid } = this.props;
     leaveRoom({ roomId, uid }).then(() =>
-      this.updateState({ roomId: '', card: '' })
+      this.updateState(
+        { roomId: '', cardName: '', joined: false, isAdmin: false },
+        { card: '' }
+      )
     );
+    this.forceUpdate();
   }
 
   async createCard() {
@@ -70,15 +81,30 @@ class Main extends React.Component {
   }
 
   isUserLoggedIn() {
-    return this.props.user;
+    if (this.props.user) {
+      console.log({
+        isUserLoggedIn: !!this.props.user.uid,
+        val: this.props.user.uid,
+      });
+      return !!this.props.user;
+    }
+    return false;
   }
 
   didUserJoinRoom() {
-    return this.state.joined;
+    console.log({
+      didUserJoinRoom: this.safeBool(this.state.joined),
+      val: this.state.joined,
+    });
+    return this.safeBool(this.state.joined);
   }
 
   userCreatedCard() {
-    return this.state.cardName;
+    console.log({
+      userCreatedCard: !!this.state.cardName,
+      val: this.state.cardName,
+    });
+    return !!this.state.cardName;
   }
 
   renderAppByState() {
@@ -90,6 +116,20 @@ class Main extends React.Component {
               {...{
                 ...this.props,
                 ...this.state,
+                leaveRoomClient: () => {
+                  this.updateState(
+                    {
+                      roomId: '',
+                      cardName: '',
+                      joined: false,
+                      isAdmin: false,
+                    },
+                    { card: '' }
+                  );
+                },
+                setIsAdmin: (val) => {
+                  this.setState({ isAdmin: val });
+                },
               }}
             />
           );
@@ -112,7 +152,7 @@ class Main extends React.Component {
               ...this.props,
               ...this.state,
               setJoinRoom: (val) => this.setState({ joinRoom: val }),
-              setRoomId: (val) => this.updateState({ roomId: val }),
+              setRoomId: (val) => this.setState({ roomId: val }),
               joinOrCreateRoom: this.joinOrCreateRoom.bind(this),
             }}
           />

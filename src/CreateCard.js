@@ -14,19 +14,19 @@ export default class CreateCard extends React.Component {
       <div className="flex flex-col">
         <div className="flex flex-col items-center mr-4 mb-4">
           {this.state.err && (
-            <div class="text-center py-4 lg:px-4 my-2">
+            <div className="text-center py-4 lg:px-4 my-2">
               <div
-                class="p-2 bg-red-800 items-center text-red-100 leading-none lg:rounded-full flex lg:inline-flex"
+                className="p-2 bg-red-800 items-center text-red-100 leading-none lg:rounded-full flex lg:inline-flex"
                 role="alert"
               >
-                <span class="flex rounded-full bg-red-500 uppercase px-2 py-1 text-xs font-bold mr-3">
+                <span className="flex rounded-full bg-red-500 uppercase px-2 py-1 text-xs font-bold mr-3">
                   Error
                 </span>
-                <span class="font-semibold mr-2 text-left flex-auto">
+                <span className="font-semibold mr-2 text-left flex-auto">
                   {this.state.err}
                 </span>
                 <svg
-                  class="fill-current opacity-75 h-4 w-4"
+                  className="fill-current opacity-75 h-4 w-4"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                 >

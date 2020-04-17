@@ -59,7 +59,7 @@ class Main extends React.Component {
     const { roomId } = this.state;
     const { uid } = this.props.user;
     leaveRoom({ roomId, uid }).then(() =>
-      this.updateState({ roomId: null, cardName: null, card: null })
+      this.updateState({ roomId: '', card: '' })
     );
   }
 

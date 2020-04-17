@@ -164,7 +164,9 @@ exports.countPlayerChange = functions.database
     let increment;
     const playersData = (await playersRef.once('value')).val();
     console.log({ playersData });
-    if (!playersData) return null;
+    if (!playersData) {
+      return null;
+    }
     if (change.after.exists() && !change.before.exists()) {
       increment = 1;
     } else if (!change.after.exists() && change.before.exists()) {

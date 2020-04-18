@@ -280,12 +280,25 @@ exports.recountCards = functions.database
 exports.createCard = functions.https.onCall(
   async ({ cardName, roomId }, { auth: { uid } }) => {
     try {
-      await rooms
-        .child(roomId)
-        .child('players')
-        .child(uid)
-        .child('card')
-        .set(cardName);
+      const gameStarted = await (
+        await rooms.child(roomId).child('gameStarted').once('value')
+      ).val();
+      if (gameStarted) {
+        await rooms
+          .child(roomId)
+          .child('players')
+          .child(uid)
+          .child('newCard')
+          .set(cardName);
+      } else {
+        await rooms
+          .child(roomId)
+          .child('players')
+          .child(uid)
+          .child('card')
+          .set(cardName);
+      }
+
       console.log({ roomId, cardName });
       rooms.child(roomId).child('timestamp').set(Date.now());
     } catch (err) {
@@ -326,6 +339,18 @@ exports.startGame = functions.https.onCall(async ({ roomId }, context) => {
       const gameData = {};
       const turns = [];
       for (const key in playersData) {
+        if (playersData[key].newCard) {
+          playersData[key].card = playersData[key].newCard;
+          delete playersData[key].newCard;
+          // don't need to await as we don't want to wait for it's deletion
+          // we got what we need
+          rooms
+            .child(roomId)
+            .child('players')
+            .child(key)
+            .child('newCard')
+            .remove();
+        }
         cards.push(playersData[key].card);
         gameData[key] = {};
         turns.push(key);
@@ -365,6 +390,16 @@ exports.startGame = functions.https.onCall(async ({ roomId }, context) => {
     console.log(msg);
     await rooms.child(roomId).child('msg').set(msg);
     return msg;
+  } catch (err) {
+    console.log(err);
+    return err;
+  }
+});
+
+exports.stopGame = functions.https.onCall(async ({ roomId }) => {
+  try {
+    await rooms.child(roomId).child('gameStarted').set(false);
+    return null;
   } catch (err) {
     console.log(err);
     return err;
@@ -449,45 +484,47 @@ exports.checkShow = functions.https.onCall(
           .child('lastShowClicked')
           .once('value')
       ).val();
-      if (lastShowClicked !== uid) {
-        const winner = (
+      const winner = (
+        await rooms
+          .child(roomId)
+          .child('gameData')
+          .child('winner')
+          .once('value')
+      ).val();
+
+      console.log({ winner });
+
+      if (!winner) {
+        console.log({ cards });
+
+        let i;
+        for (i = 0; i < cards.length && cards[i] === cards[0]; i += 1);
+        if (i === 4) {
+          console.log('Setting winner:', uid);
+          const isSameCard =
+            (
+              await rooms
+                .child(roomId)
+                .child('players')
+                .child(uid)
+                .child('card')
+                .once('value')
+            ).val() === cards[0];
+          await rooms.child(roomId).child('gameData').child('winner').set(uid);
           await rooms
             .child(roomId)
-            .child('gameData')
-            .child('winner')
-            .once('value')
-        ).val();
-
-        console.log({ winner });
-
-        if (!winner) {
-          console.log({ cards });
-
-          let i;
-          for (i = 0; i < cards.length && cards[i] === cards[0]; i += 1);
-          if (i === 4) {
-            console.log('Setting winner:', uid);
-            const isSameCard =
-              (
-                await rooms
-                  .child(roomId)
-                  .child('players')
-                  .child(uid)
-                  .child('card')
-                  .once('value')
-              ).val() === cards[0];
-            await rooms
-              .child(roomId)
-              .child('gameData')
-              .child('winner')
-              .set(uid);
-            await rooms
-              .child(roomId)
-              .child('scores')
-              .child(uid)
-              .transaction((score) => score + (isSameCard ? 200 : 100));
-            await rooms.child(roomId).child('gameStarted').set(false);
-            msg = { uid, msg: 'You won!' };
+            .child('scores')
+            .child(uid)
+            .transaction((score) => score + (isSameCard ? 200 : 100));
+          await rooms.child(roomId).child('gameStarted').set(false);
+          msg = { uid, msg: 'You won!' };
+        } else {
+          if (lastShowClicked !== uid) {
+            msg = {
+              uid,
+              msg:
+                'You have already checked for SHOW but you do not have 4 same cards.',
+            };
           } else {
             await rooms
               .child(roomId)
@@ -505,12 +542,6 @@ exports.checkShow = functions.https.onCall(
         }
         rooms.child(roomId).child('timestamp').set(Date.now());
         await rooms.child(roomId).child('msg').set(msg);
-      } else {
-        msg = {
-          uid,
-          msg:
-            'You have already checked for SHOW but you do not have 4 same cards.',
-        };
       }
       await rooms
         .child(roomId)

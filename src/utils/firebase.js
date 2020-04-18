@@ -16,5 +16,6 @@ export const joinRoom = firebase.functions().httpsCallable('joinRoom');
 export const leaveRoom = firebase.functions().httpsCallable('leaveRoom');
 export const createCard = firebase.functions().httpsCallable('createCard');
 export const startGame = firebase.functions().httpsCallable('startGame');
+export const stopGame = firebase.functions().httpsCallable('stopGame');
 export const passCard = firebase.functions().httpsCallable('passCard');
 export const checkShow = firebase.functions().httpsCallable('checkShow');

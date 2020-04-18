@@ -6,6 +6,7 @@ import {
   passCard,
   checkShow,
   startGame,
+  stopGame,
   createCard,
   leaveRoom,
 } from './utils/firebase';
@@ -106,6 +107,10 @@ export default class Game extends React.Component {
     });
   }
 
+  async stopGame() {
+    stopGame({ roomId: this.props.roomId });
+  }
+
   async passCard() {
     if (!this.state.passClicked) {
       await this.setState({ passClicked: true });
@@ -159,6 +164,14 @@ export default class Game extends React.Component {
     return (
       <div className="flex flex-col w-screen h-screen">
         <div className="w-full grid justify-between">
+          {this.props.isAdmin && (
+            <button
+              onClick={() => this.stopGame()}
+              className="m-auto h-20 w-20 flex items-center justify-center bg-red-100 hover:bg-red-300 text-black font-bold border-4 border-red-500 rounded-md"
+            >
+              Stop Game
+            </button>
+          )}
           <div className="flex flex-col text-center mx-auto col-span-12">
             <h2>
               <b>Player Data</b>
@@ -350,8 +363,7 @@ export default class Game extends React.Component {
                     ? this.state.previousTurn
                       ? `${
                           this.state.players[this.state.previousTurn].name
-                        } has passed
-                  a card`
+                        } has passed a card`
                       : 'Pass a card to the next player'
                     : `Waiting for ${
                         this.state.players[this.state.currentTurn].name

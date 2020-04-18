@@ -25,9 +25,9 @@ const safeBool = (val) => {
 };
 
 const getRandomColor = () => {
-  var letters = 'FEDCBA98';
-  var color = '#';
-  for (var i = 0; i < 6; i++) {
+  const letters = 'FEDCBA98';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
     color += letters[Math.floor(Math.random() * letters.length)];
   }
   return color;
@@ -158,6 +158,27 @@ exports.leaveRoom = functions.https.onCall(async ({ roomId, uid }) => {
   }
   return true;
 });
+
+/**
+ * Deletes all inactive rooms.
+ */
+exports.deleteInactiveRooms = functions.database
+  .ref('rooms')
+  .onWrite(async (change) => {
+    const now = Date.now();
+    const cutoff = now - 30 * 60 * 1000;
+
+    const oldItemsQuery = rooms.orderByChild('timestamp').endAt(cutoff);
+    return oldItemsQuery.once('value', (snapshot) => {
+      // create a map with all children that need to be removed
+      const updates = {};
+      snapshot.forEach((child) => {
+        updates[child.key] = null;
+      });
+      // execute all updates in one go and return the result to end the function
+      return rooms.update(updates);
+    });
+  });
 
 exports.countPlayerChange = functions.database
   .ref('rooms/{roomId}/players/{playerId}')

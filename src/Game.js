@@ -206,6 +206,7 @@ export default class Game extends React.Component {
                     {this.props.uid === uid ? (
                       this.state.cardEditing ? (
                         <button
+                          id="saveButton"
                           onClick={() => {
                             this.updateCard();
                             this.setState({
@@ -231,6 +232,7 @@ export default class Game extends React.Component {
                         </button>
                       ) : (
                         <button
+                          id="editButton"
                           className="baseline"
                           onClick={() =>
                             this.setState({
@@ -258,30 +260,32 @@ export default class Game extends React.Component {
                     ) : (
                       <span></span>
                     )}
-                    {this.safeBool(this.props.isAdmin) && (
-                      <button
-                        uid={uid}
-                        onClick={(e) =>
-                          this.kickUser(e.currentTarget.getAttribute('uid'))
-                        }
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                    {this.safeBool(this.props.isAdmin) &&
+                      uid !== this.props.uid && (
+                        <button
+                          className="ml-2"
+                          uid={uid}
+                          onClick={(e) =>
+                            this.kickUser(e.currentTarget.getAttribute('uid'))
+                          }
                         >
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="15" y1="9" x2="9" y2="15"></line>
-                          <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                      </button>
-                    )}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                          </svg>
+                        </button>
+                      )}
                   </li>
                 ))}
             </ul>

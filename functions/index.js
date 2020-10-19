@@ -348,8 +348,7 @@ exports.startGame = functions.https.onCall(async ({ roomId }, context) => {
             .child(roomId)
             .child('players')
             .child(key)
-            .child('newCard')
-            .remove();
+            .update({ newCard: null, card: playersData[key].card });
         }
         cards.push(playersData[key].card);
         gameData[key] = {};
@@ -510,12 +509,26 @@ exports.checkShow = functions.https.onCall(
                 .child('card')
                 .once('value')
             ).val() === cards[0];
-          await rooms.child(roomId).child('gameData').child('winner').set(uid);
+          const isDealCardShow =
+            (
+              await rooms
+                .child(roomId)
+                .child('gameData')
+                .child('turnCount')
+                .once('value')
+            ).val() === 0;
+          await rooms
+            .child(roomId)
+            .child('gameData')
+            .child('winner')
+            .set({ uid, card: cards[0] });
           await rooms
             .child(roomId)
             .child('scores')
             .child(uid)
-            .transaction((score) => score + (isSameCard ? 200 : 100));
+            .transaction(
+              (score) => score + (isDealCardShow ? 50 : isSameCard ? 200 : 100)
+            );
           await rooms.child(roomId).child('gameStarted').set(false);
           msg = { uid, msg: 'You won!' };
         } else {

@@ -164,14 +164,32 @@ export default class Game extends React.Component {
     return (
       <div className="flex flex-col w-screen h-screen">
         <div className="w-full grid justify-between">
-          {this.props.isAdmin && (
-            <button
-              onClick={() => this.stopGame()}
-              className="m-auto h-20 w-20 flex items-center justify-center bg-red-100 hover:bg-red-300 text-black font-bold border-4 border-red-500 rounded-md"
-            >
-              Stop Game
-            </button>
-          )}
+          <div className="flex flex-col text-center mx-auto col-span-12">
+            {this.props.isAdmin && this.state.gameStarted && (
+              <button
+                onClick={() => this.stopGame()}
+                className="m-auto my-2 p-2 flex items-center justify-center bg-red-100 hover:bg-red-300 text-black font-bold border-4 border-red-500 rounded-md"
+              >
+                <span className="mr-2">Stop Game</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="feather feather-alert-circle"
+                >
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="flex flex-col text-center mx-auto col-span-12">
             <h2>
               <b>Player Data</b>
@@ -322,13 +340,13 @@ export default class Game extends React.Component {
             </p>
           </div>
         </div>
-        <div className="my-auto flex flex-col ">
+        <div className="my-auto flex flex-col text-center">
           {[this.state.msg, this.state.privMsg].map(
-            (msg) =>
+            (msg, key) =>
               msg && (
-                <div className="text-center py-4 lg:px-4 my-2">
+                <div key={key} className="mx-auto text-center py-4 px-4 my-2">
                   <div
-                    className="p-2 bg-blue-800 items-center text-blue-100 leading-none lg:rounded-full flex lg:inline-flex"
+                    className="p-2 bg-blue-800 items-center text-blue-100 leading-none rounded-full flex inline-flex"
                     role="alert"
                   >
                     <span className="flex rounded-full bg-blue-500 uppercase px-2 py-1 text-xs font-bold mr-3">
@@ -349,12 +367,23 @@ export default class Game extends React.Component {
               )
           )}
           {this.state.winner &&
+          this.state.cards &&
+          this.state.cards[this.state.winner.card] &&
           this.state.players &&
-          this.state.players[this.state.winner] ? (
-            <h1 className="mx-auto font-bold text-xl">
-              {this.state.players[this.state.winner].name} has won the game
+          this.state.players[this.state.winner.uid] ? (
+            <h1 className="mx-auto font-bold text-xl text-center">
+              {this.state.players[this.state.winner.uid].name} has won the game
+              with{' '}
+              <span
+                style={{
+                  backgroundColor: this.state.cards[this.state.winner.card],
+                }}
+              >
+                {this.state.winner.card}
+              </span>
             </h1>
           ) : (
+            this.state.gameStarted &&
             this.state.players &&
             this.state.currentTurn && (
               <React.Fragment>
@@ -394,6 +423,7 @@ export default class Game extends React.Component {
                 )}
                 <ul id="passed">
                   {this.state.currentTurn === this.props.uid &&
+                    !this.state.winner &&
                     this.state.cards &&
                     this.state.passedCard && (
                       <li
